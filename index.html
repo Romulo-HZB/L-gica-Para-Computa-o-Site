@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trabalho Final - Lógica para Computação | Torre de Hanói</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Fira+Code:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    colors: {
+                        bg: '#030014',
+                        card: 'rgba(255, 255, 255, 0.03)',
+                        primary: '#a855f7', // Purple
+                        secondary: '#3b82f6', // Blue
+                        accent: '#f472b6', // Pink
+                        success: '#4ade80',
+                        error: '#f87171',
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'gradient': 'gradient 8s linear infinite',
+                        'flow': 'flow 2s linear infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        gradient: {
+                            '0%, 100%': { backgroundPosition: '0% 50%' },
+                            '50%': { backgroundPosition: '100% 50%' },
+                        },
+                        flow: {
+                            '0%': { strokeDashoffset: '24' },
+                            '100%': { strokeDashoffset: '0' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #030014;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .glass-card {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(168, 85, 247, 0.3);
+            box-shadow: 0 10px 40px -10px rgba(168, 85, 247, 0.2);
+        }
+
+        .text-gradient {
+            background: linear-gradient(to right, #c084fc, #60a5fa, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-size: 200% auto;
+            animation: gradient 8s linear infinite;
+        }
+
+        .code-block {
+            background: #0f0b1e;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .code-block::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #a855f7, #3b82f6);
+        }
+
+        /* Automaton Styles */
+        .node {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.8rem;
+            position: relative;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .node-active {
+            background: rgba(168, 85, 247, 0.2);
+            border: 2px solid #a855f7;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+        }
+
+        .node-default {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            color: #94a3b8;
+        }
+
+        .connector {
+            position: absolute;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            z-index: 0;
+            transform-origin: left center;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #030014;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+
+<body class="antialiased selection:bg-primary/30 selection:text-white">
+
+    <!-- Background Effects -->
+    <div class="fixed inset-0 z-[-1] overflow-hidden pointer-events-none">
+        <div
+            class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary/20 blur-[120px] animate-pulse-slow">
+        </div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-secondary/20 blur-[120px] animate-pulse-slow"
+            style="animation-delay: 2s;"></div>
+        <div
+            class="absolute top-[40%] left-[50%] transform -translate-x-1/2 w-[30%] h-[30%] rounded-full bg-accent/10 blur-[100px]">
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 glass border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-3 h-3 rounded-full bg-primary animate-pulse"></div>
+                <span class="font-mono font-bold text-sm tracking-wider">LÓGICA 2025.2</span>
+            </div>
+            <div class="hidden md:flex items-center gap-8 text-sm font-medium text-gray-400">
+                <a href="#modelagem" class="hover:text-white transition-colors">Modelagem</a>
+                <a href="#deducao" class="hover:text-white transition-colors">Dedução</a>
+                <a href="#unificacao" class="hover:text-white transition-colors">Unificação</a>
+                <a href="#computacional" class="text-primary hover:text-accent transition-colors">Computacional</a>
+            </div>
+            <a href="https://github.com/romulozanfran/SiteProto" target="_blank"
+                class="px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-xs font-mono">
+                GitHub Repo
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="min-h-screen flex flex-col justify-center items-center relative px-6 pt-20">
+        <div class="text-center max-w-4xl mx-auto space-y-8 animate-float">
+            <div
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-mono mb-4">
+                <span>TRABALHO FINAL DA DISCIPLINA</span>
+            </div>
+            <h1 class="text-6xl md:text-8xl font-extrabold tracking-tight leading-tight">
+                <span class="text-gradient">Torre de Hanói</span>
+                <br>
+                <span class="text-white text-4xl md:text-6xl font-light">Modelagem & Resolução</span>
+            </h1>
+            <p class="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
+                Uma jornada completa desde a formalização lógica até a implementação de um resolvedor automático baseado
+                em IA.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 text-left">
+                <div class="glass p-6 rounded-2xl border-l-4 border-primary">
+                    <p class="text-xs text-gray-500 font-mono uppercase">Estudante</p>
+                    <p class="font-semibold text-lg">Rômulo Henrique Zanfran Braun</p>
+                </div>
+                <div class="glass p-6 rounded-2xl border-l-4 border-secondary">
+                    <p class="text-xs text-gray-500 font-mono uppercase">Professora</p>
+                    <p class="font-semibold text-lg">Wilcilene Maria Kowal</p>
+                </div>
+                <div class="glass p-6 rounded-2xl border-l-4 border-accent">
+                    <p class="text-xs text-gray-500 font-mono uppercase">Instituição</p>
+                    <p class="font-semibold text-lg">IFC - São Bento do Sul</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce">
+            <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3">
+                </path>
+            </svg>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 py-20 space-y-32">
+
+        <!-- Section 1: Modelagem -->
+        <section id="modelagem" class="space-y-12">
+            <div class="flex items-center gap-4 mb-8">
+                <span class="text-6xl font-bold text-white/5">01</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-white">Descrição e Modelagem</h2>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-12">
+                <div class="space-y-6">
+                    <div class="glass-card p-8 rounded-3xl">
+                        <h3 class="text-xl font-semibold mb-4 text-primary">O Cenário</h3>
+                        <p class="text-gray-400 leading-relaxed">
+                            O problema clássico consiste em 3 hastes (A, B, C) e N discos de tamanhos distintos.
+                            O objetivo é mover todos os discos da haste origem (A) para a haste destino (C), usando a
+                            haste auxiliar (B).
+                        </p>
+                    </div>
+                    <div class="glass-card p-8 rounded-3xl">
+                        <h3 class="text-xl font-semibold mb-4 text-accent">Restrições Formais</h3>
+                        <ul class="space-y-3 text-gray-300">
+                            <li class="flex items-start gap-3">
+                                <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent"></span>
+                                Mover apenas um disco por vez.
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent"></span>
+                                Um disco nunca pode ser colocado sobre um disco menor que ele.
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent"></span>
+                                Um disco só pode ser movido se estiver no topo de sua haste.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="relative flex items-center justify-center glass rounded-3xl p-12">
+                    <!-- Abstract Visual Representation -->
+                    <div class="relative w-64 h-48">
+                        <div class="absolute bottom-0 w-full h-2 bg-gray-700 rounded"></div>
+                        <div class="absolute bottom-2 left-[20%] w-2 h-32 bg-gray-700 rounded-t"></div>
+                        <div class="absolute bottom-2 left-[50%] w-2 h-32 bg-gray-700 rounded-t"></div>
+                        <div class="absolute bottom-2 left-[80%] w-2 h-32 bg-gray-700 rounded-t"></div>
+
+                        <!-- Disks -->
+                        <div
+                            class="absolute bottom-2 left-[20%] transform -translate-x-1/2 w-24 h-4 bg-gradient-to-r from-purple-500 to-blue-500 rounded shadow-lg z-10">
+                        </div>
+                        <div
+                            class="absolute bottom-7 left-[20%] transform -translate-x-1/2 w-16 h-4 bg-gradient-to-r from-purple-400 to-blue-400 rounded shadow-lg z-20">
+                        </div>
+                        <div
+                            class="absolute bottom-12 left-[20%] transform -translate-x-1/2 w-8 h-4 bg-gradient-to-r from-purple-300 to-blue-300 rounded shadow-lg z-30">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Lógica Proposicional -->
+        <section id="logica" class="space-y-12">
+            <div class="flex items-center gap-4 mb-8">
+                <span class="text-6xl font-bold text-white/5">02</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-white">Lógica Proposicional</h2>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="glass-card p-8 rounded-2xl">
+                    <h3 class="text-lg font-mono text-secondary mb-4">01. Proposições Atômicas</h3>
+                    <p class="text-gray-400 mb-4">Definimos o estado do sistema através de proposições que indicam a
+                        posição de cada disco.</p>
+                    <div class="code-block p-4 rounded-lg font-mono text-sm text-gray-300">
+                        D(i,h) = "Disco i está na haste h"<br>
+                        <br>
+                        Exemplos:<br>
+                        D(1,A) = Verdadeiro se Disco 1 está em A<br>
+                        D(2,C) = Falso se Disco 2 não está em C
+                    </div>
+                </div>
+
+                <div class="glass-card p-8 rounded-2xl">
+                    <h3 class="text-lg font-mono text-secondary mb-4">02. Fórmulas Bem Formadas (FBFs)</h3>
+                    <p class="text-gray-400 mb-4">Regra de Exclusividade: Um disco não pode estar em dois lugares ao
+                        mesmo tempo.</p>
+                    <div class="code-block p-4 rounded-lg font-mono text-sm text-gray-300">
+                        D(1,A) → (¬D(1,B) ∧ ¬D(1,C))
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Dedução -->
+        <section id="deducao" class="space-y-12">
+            <div class="flex items-center gap-4 mb-8">
+                <span class="text-6xl font-bold text-white/5">03</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-white">Dedução Natural</h2>
+            </div>
+
+            <div class="glass-card p-10 rounded-3xl border border-white/10">
+                <div class="flex flex-col md:flex-row gap-12">
+                    <div class="flex-1 space-y-6">
+                        <h3 class="text-2xl font-bold text-white">Validando Movimentos</h3>
+                        <p class="text-gray-400">
+                            Utilizamos regras de inferência como o <strong>Modus Ponens</strong> para provar que um
+                            movimento é válido dado o estado atual.
+                        </p>
+                        <div class="space-y-4">
+                            <div class="flex items-center gap-4">
+                                <div
+                                    class="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 font-bold">
+                                    P1</div>
+                                <p class="text-sm text-gray-300">Se o topo de B está livre ou tem disco > D1, posso
+                                    mover D1.</p>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <div
+                                    class="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 font-bold">
+                                    P2</div>
+                                <p class="text-sm text-gray-300">Fato: O topo de B está livre.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <div class="code-block p-6 rounded-xl shadow-2xl">
+                            <pre class="font-mono text-sm leading-relaxed text-blue-200">
+1. (Livre(B) ∨ Maior(Topo(B), D1)) → PodeMover(D1, B)  [Premissa]
+2. Livre(B)                                          [Premissa]
+3. Livre(B) ∨ Maior(Topo(B), D1)                     [Intro. Disj: 2]
+---------------------------------------------------------------------
+4. PodeMover(D1, B)                                  [Modus Ponens: 1,3] ✅</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Predicados -->
+        <section id="predicados" class="space-y-12">
+            <div class="flex items-center gap-4 mb-8">
+                <span class="text-6xl font-bold text-white/5">04</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-white">Lógica de Predicados</h2>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="glass-card p-6 rounded-2xl text-center">
+                    <div
+                        class="w-12 h-12 mx-auto bg-purple-500/20 rounded-full flex items-center justify-center text-purple-400 mb-4">
+                        <span class="font-mono font-bold">∀</span>
+                    </div>
+                    <h4 class="font-bold mb-2">Universal</h4>
+                    <p class="text-sm text-gray-400">Regras que se aplicam a todos os discos e hastes.</p>
+                </div>
+                <div class="glass-card p-6 rounded-2xl text-center">
+                    <div
+                        class="w-12 h-12 mx-auto bg-blue-500/20 rounded-full flex items-center justify-center text-blue-400 mb-4">
+                        <span class="font-mono font-bold">∃</span>
+                    </div>
+                    <h4 class="font-bold mb-2">Existencial</h4>
+                    <p class="text-sm text-gray-400">Verificar se existe um movimento válido possível.</p>
+                </div>
+                <div class="glass-card p-6 rounded-2xl text-center">
+                    <div
+                        class="w-12 h-12 mx-auto bg-pink-500/20 rounded-full flex items-center justify-center text-pink-400 mb-4">
+                        <span class="font-mono font-bold">⊢</span>
+                    </div>
+                    <h4 class="font-bold mb-2">Inferência</h4>
+                    <p class="text-sm text-gray-400">Derivar novos estados a partir dos axiomas.</p>
+                </div>
+            </div>
+
+            <div class="glass-card p-8 rounded-2xl border-l-4 border-purple-500">
+                <h3 class="text-xl font-bold mb-4">A Regra Universal da Torre</h3>
+                <p class="text-gray-300 mb-6 italic">"Para todo x, y e h, se x está sobre y na haste h, x não pode ser
+                    maior que y."</p>
+                <div class="code-block p-6 rounded-xl">
+                    <code class="font-mono text-purple-300 text-lg">
+                        ∀x∀y∀h (Sobre(x,y) ∧ NaHaste(x,h) → ¬Maior(x,y))
+                    </code>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Substituição e Unificação (NEW) -->
+        <section id="unificacao" class="space-y-12">
+            <div class="flex items-center gap-4 mb-8">
+                <span class="text-6xl font-bold text-white/5">05</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-white">Substituição e Unificação</h2>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-12">
+                <div class="space-y-6">
+                    <p class="text-gray-300 leading-relaxed">
+                        Para aplicar as regras gerais (Predicados) a casos específicos do jogo, utilizamos os processos
+                        de Substituição e Unificação.
+                    </p>
+                    <div class="glass-card p-8 rounded-3xl">
+                        <h3 class="text-xl font-semibold mb-4 text-secondary">Exemplo de Unificação</h3>
+                        <p class="text-sm text-gray-400 mb-4">
+                            Queremos verificar se a regra de movimento se aplica ao Disco 1.
+                        </p>
+                        <div class="space-y-2 font-mono text-sm">
+                            <div class="flex justify-between border-b border-white/10 pb-2">
+                                <span class="text-gray-500">Regra:</span>
+                                <span class="text-purple-300">PodeMover(x, y)</span>
+                            </div>
+                            <div class="flex justify-between border-b border-white/10 pb-2">
+                                <span class="text-gray-500">Fato:</span>
+                                <span class="text-blue-300">PodeMover(D1, B)</span>
+                            </div>
+                            <div class="pt-2">
+                                <span class="text-gray-500">MGU (σ):</span>
+                                <span class="text-green-400">{ x / D1, y / B }</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass-card p-8 rounded-3xl flex flex-col justify-center">
+                    <h3 class="text-xl font-semibold mb-4 text-accent">Aplicação na Regra Universal</h3>
+                    <p class="text-gray-400 mb-4">Substituindo variáveis por constantes do estado atual:</p>
+                    <div class="code-block p-4 rounded-lg font-mono text-xs md:text-sm text-gray-300">
+                        Fórmula: ∀x∀y (Sobre(x,y) → ¬Maior(x,y))<br>
+                        Substituição: θ = { x / Disco2, y / Disco1 }<br>
+                        <br>
+                        <span class="text-pink-400">Resultado:</span><br>
+                        Sobre(Disco2, Disco1) → ¬Maior(Disco2, Disco1)<br>
+                        <span class="text-gray-500 italic">// Verifica se Disco 2 pode estar sobre Disco 1</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Parte Computacional (Enhanced) -->
+        <section id="computacional" class="py-20 relative">
+            <div
+                class="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent pointer-events-none">
+            </div>
+
+            <div class="text-center mb-16">
+                <span
+                    class="inline-block py-1 px-3 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold tracking-widest mb-4">FASE
+                    2: APLICAÇÃO</span>
+                <h2 class="text-4xl md:text-5xl font-bold text-white mb-6">Parte Computacional</h2>
+                <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+                    Implementação prática da lógica formal através de Autômatos Finitos e Algoritmos em Python.
+                </p>
+            </div>
+
+            <!-- 6.1 Autômato Finito -->
+            <div class="mb-20">
+                <h3 class="text-2xl font-bold text-white mb-8 flex items-center gap-3">
+                    <span class="text-primary">6.1</span> Autômato Finito (Tomada de Decisão)
+                </h3>
+                <div
+                    class="glass p-8 rounded-3xl overflow-hidden relative min-h-[400px] flex items-center justify-center bg-[#0a0a0a]">
+                    <img src="automato_hanoi_n.png" alt="Autômato Finito Determinístico - Torre de Hanói (N discos)"
+                        class="max-w-full h-auto rounded-xl shadow-2xl border border-white/10">
+                </div>
+                <p class="mt-4 text-center text-gray-400 text-sm">
+                    Figura 1: Autômato Finito Determinístico representando o fluxo de validação de cada movimento.
+                </p>
+            </div>
+
+            <!-- 6.2 Implementação Python -->
+            <div class="grid md:grid-cols-2 gap-12 items-start">
+                <div class="space-y-6">
+                    <h3 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+                        <span class="text-primary">6.2</span> Implementação em Python
+                    </h3>
+                    <p class="text-gray-300 leading-relaxed">
+                        O código abaixo implementa a lógica do autômato acima. A classe <code>HanoiAutomaton</code>
+                        gerencia os estados e valida as transições com base nas regras da Lógica de Predicados.
+                    </p>
+
+                    <div class="glass-card p-6 rounded-2xl">
+                        <h4 class="font-bold text-white mb-2">Funcionalidades Chave</h4>
+                        <ul class="space-y-2 text-sm text-gray-400">
+                            <li class="flex items-center gap-2">
+                                <div class="w-1.5 h-1.5 rounded-full bg-blue-400"></div>Verificação de Estado (Topo da
+                                Haste)
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <div class="w-1.5 h-1.5 rounded-full bg-purple-400"></div>Validação de Tamanho (Regra
+                                Universal)
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <div class="w-1.5 h-1.5 rounded-full bg-green-400"></div>Transição de Estados
+                                (Sucesso/Erro)
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="relative group">
+                    <div
+                        class="absolute -inset-1 bg-gradient-to-r from-primary to-accent rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200">
+                    </div>
+                    <div class="relative glass p-1 rounded-2xl overflow-hidden">
+                        <div
+                            class="bg-[#0f0b1e] rounded-xl p-4 font-mono text-xs md:text-sm text-gray-300 h-[450px] overflow-y-auto">
+                            <div class="flex gap-2 mb-4 border-b border-white/10 pb-2">
+                                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                                <span class="ml-2 text-gray-500">automato_hanoi.py</span>
+                            </div>
+                            <pre><code class="language-python">class HanoiAutomaton:
+    def __init__(self):
+        self.state = 'IDLE'
+        self.towers = {'A': [3, 2, 1], 'B': [], 'C': []}
+
+    def process_move(self, disk, source, target):
+        print(f"[State: {self.state}] Tentando mover D{disk} de {source} para {target}...")
+        
+        # Transição 1: Validação
+        self.state = 'VALIDATING'
+        
+        if not self._is_top_disk(disk, source):
+            self.state = 'ERROR'
+            return "ERRO: Disco não está no topo!"
+            
+        if not self._is_valid_placement(disk, target):
+            self.state = 'ERROR'
+            return "ERRO: Disco maior sobre menor!"
+
+        # Transição 2: Execução
+        self.state = 'EXECUTING'
+        self._move_disk(source, target)
+        
+        self.state = 'IDLE'
+        return "SUCESSO: Movimento realizado."
+
+    def _is_valid_placement(self, disk, target):
+        if not self.towers[target]: return True
+        return self.towers[target][-1] > disk
+
+# --- Simulação ---
+automato = HanoiAutomaton()
+print(automato.process_move(1, 'A', 'C')) 
+# Output: SUCESSO: Movimento realizado.
+
+print(automato.process_move(2, 'A', 'C'))
+# Output: ERRO: Disco maior sobre menor!
+</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Conclusion -->
+        <section class="py-20 text-center space-y-8">
+            <h2 class="text-3xl font-bold text-white">Conclusão</h2>
+            <div class="max-w-3xl mx-auto glass-card p-8 rounded-3xl">
+                <p class="text-lg text-gray-300 leading-relaxed">
+                    Este trabalho demonstrou que a <strong>Lógica Formal</strong> fornece a base teórica segura para a
+                    resolução de problemas complexos, enquanto a <strong>Computação</strong> automatiza sua aplicação. A
+                    ferramenta desenvolvida prova que conceitos abstratos como CNF e Predicados são vitais para a
+                    construção de software robusto e verificável.
+                </p>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="border-t border-white/5 bg-black/40 backdrop-blur-md py-12">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="text-center md:text-left">
+                <p class="font-bold text-white">Lógica para Computação</p>
+                <p class="text-sm text-gray-500">Semestre 2025.2</p>
+            </div>
+            <div class="text-center md:text-right">
+                <p class="text-sm text-gray-500">Desenvolvido por Rômulo Henrique Zanfran Braun</p>
+                <p class="text-xs text-gray-600 mt-1">Instituto Federal Catarinense - Campus São Bento do Sul</p>
+            </div>
+        </div>
+    </footer>
+
+</body>
+
+</html>
